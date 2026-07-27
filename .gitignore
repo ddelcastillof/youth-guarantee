@@ -1,0 +1,12 @@
+# MacOS files
+.DS_Store
+
+# Docx files
+*.docx
+
+# Guidance on how we defined the scenarios
+background/
+manual/
+*.tex
+*.bib
+.latexmkrc
