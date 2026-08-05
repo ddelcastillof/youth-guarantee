@@ -24,8 +24,8 @@ export FIRST_YEAR=2023
 export LAST_YEAR=2035
 export POPULATION=25000
 export STARTING_SEED=100
-export RUNS_PER_BATCH=10
-export BATCHES=100
+export RUNS_PER_BATCH=1
+export BATCHES=1
 export SIMPATHS_PATH=../SimPaths
 
 Rscript src/01_run_simpaths.R
