@@ -58,3 +58,6 @@ if (!dir.exists(results_path)) dir.create(results_path, recursive = TRUE)
 writeLines(new_output_dirs, file.path(results_path, "output_dirs.txt"))
 
 timestamp(suffix = paste(" - Finished scenario", scenario))
+
+# Delete heavy files after the simulation is complete
+file.remove(file.path(simpaths_input_path, c("input.mv.db", "input.mv.db.lock")))
