@@ -1,10 +1,5 @@
 """
 Run the SimPaths microsimulation in batches for a single scenario.
-
-Configuration is read from the environment, matching slurm/00_local_run.sh and
-slurm/01_run_simpaths.sbatch. Writes the paths of the newly created SimPaths
-output directories to data/simpaths_output/<scenario>/output_dirs.txt, which
-src/02_summarise_outputs.R reads.
 """
 
 import os
