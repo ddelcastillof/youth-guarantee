@@ -10,3 +10,6 @@ manual/
 *.tex
 *.bib
 .latexmkrc
+
+# Legacy files
+legacy/
