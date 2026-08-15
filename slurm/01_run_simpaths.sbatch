@@ -14,7 +14,7 @@
 #SBATCH --mail-user=darwin.delcastillofernandez@glasgow.ac.uk
 #SBATCH --mail-type=ALL
 
-module load apps/R/4.4.1/gcc-8.5.0+openblas-0.3.28
+module load apps/python3
 module load apps/java/23.0.1/noarch
 
 export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
@@ -28,4 +28,4 @@ export RUNS_PER_BATCH=1
 export BATCHES=5
 export SIMPATHS_PATH=../SimPaths
 
-Rscript src/01_run_simpaths.R
+python3 src/01_run_simpaths.py

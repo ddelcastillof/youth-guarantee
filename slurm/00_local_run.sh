@@ -11,4 +11,4 @@ export RUNS_PER_BATCH=1
 export BATCHES=10
 export SIMPATHS_PATH=../SimPaths
 
-Rscript src/01_run_simpaths.R
+python3 src/01_run_simpaths.py
