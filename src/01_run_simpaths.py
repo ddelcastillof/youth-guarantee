@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run the SimPaths microsimulation in batches for a single scenario.
 
@@ -6,7 +5,7 @@ Configuration is read from the environment, matching slurm/00_local_run.sh and
 slurm/01_run_simpaths.sbatch. Writes the paths of the newly created SimPaths
 output directories to data/simpaths_output/<scenario>/output_dirs.txt, which
 src/02_summarise_outputs.R reads.
-"""  # noqa: EXE001
+"""
 
 import os
 import subprocess
@@ -16,7 +15,7 @@ from pathlib import Path
 
 
 def timestamp(suffix):
-    now = datetime.now().strftime("%a %b %d %H:%M:%S %Y")  # noqa: DTZ005
+    now = datetime.now().strftime("%a %b %d %H:%M:%S %Y")
     print(f"##------ {now} ------##{suffix}", flush=True)
 
 
