@@ -22,10 +22,10 @@ export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 export SCENARIO=baseline
 export FIRST_YEAR=2023
 export LAST_YEAR=2035
-export POPULATION=25000
+export POPULATION=10000
 export STARTING_SEED=100
 export RUNS_PER_BATCH=10
-export BATCHES=100
+export BATCHES=50
 export SIMPATHS_PATH=../SimPaths
 
 python3 src/01_run_simpaths.py
