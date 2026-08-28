@@ -61,7 +61,18 @@ all_data = all_data.with_columns(
     .alias("employed")
     )
 
+# Working age population
 final_data = all_data.filter((pl.col("demAge") >= 25) & (pl.col("demAge") <= 64))
 
+# Creating age subgroups
 
+# Grouping all variables individual statistics
+
+# Merging everything
+
+output = all_data #edit this line later
+
+# Saving file
+print("Saving summarised scenario per output {scenario}")
+pl.write_csv(output, output_file)
 
