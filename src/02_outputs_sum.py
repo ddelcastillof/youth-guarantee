@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 import polars as pl
-import polars.selectors as cs
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
