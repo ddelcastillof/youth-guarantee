@@ -51,8 +51,17 @@ for output_dir in (output_dirs):
  
 all_data = pl.concat(all_data)
      
+# Create employment variables
+all_data = all_data.with_columns(
+    pl.when(pl.col("labC4") == "EmployedOrSelfEmployed")
+    .then(True)
+    .when(pl.col("demAge").is_between(16, 64))
+    .then(False)
+    .otherwise(None)
+    .alias("employed")
+    )
 
-
+final_data = all_data.filter((pl.col("demAge") >= 25) & (pl.col("demAge") <= 64))
 
 
 
