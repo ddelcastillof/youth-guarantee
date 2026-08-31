@@ -13,7 +13,7 @@ scenario = os.environ.get("SCENARIO")
 if not scenario:
     sys.exit("SCENARIO env var not set")
 
-results_path = REPO_ROOT / "data" / "simpaths_output" / scenario
+results_path = REPO_ROOT / "data" / "preoutput" / scenario
 output_file = results_path / "summarised_output.csv"
 output_dirs = (results_path / "output_dirs.txt").read_text().splitlines()
 
