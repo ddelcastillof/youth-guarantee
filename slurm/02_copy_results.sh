@@ -6,7 +6,7 @@ set -euo pipefail
 shopt -s nullglob
 
 HPC_SIMPATHS_DIR=/users/dd198b/Documents/GitHub/SimPaths
-HPC_YG_DIR=/users/dd198b/Documents/GitHub/youth_guarantee
+HPC_YG_DIR=/users/dd198b/Documents/GitHub/youth-guarantee
 
 SCENARIO=${SCENARIO:-baseline}
 
