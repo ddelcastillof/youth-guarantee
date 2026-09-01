@@ -17,7 +17,6 @@
 
 module load apps/python3
 module load apps/miniforge
-module load apps/R/4.4.1/gcc-8.5.0+openblas-0.3.28
 
 conda activate yg-py
 
