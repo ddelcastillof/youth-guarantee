@@ -13,3 +13,10 @@ manual/
 
 # Legacy files
 legacy/
+
+/.quarto/
+**/*.quarto_ipynb
+
+# Reports
+report/*
+!report/.gitkeep
