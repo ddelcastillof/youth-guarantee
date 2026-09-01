@@ -17,6 +17,7 @@
 module load apps/python3
 module load apps/miniforge
 
+conda init
 conda activate yg-py
 
 export SCENARIO=baseline
