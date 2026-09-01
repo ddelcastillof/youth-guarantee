@@ -14,10 +14,10 @@
 #SBATCH --mail-user=darwin.delcastillofernandez@glasgow.ac.uk
 #SBATCH --mail-type=ALL
 
-module load apps/python3
+module purge
 module load apps/miniforge
 
-conda init
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate yg-py
 
 export SCENARIO=baseline
