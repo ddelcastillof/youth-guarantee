@@ -20,3 +20,7 @@ legacy/
 # Reports
 report/*
 !report/.gitkeep
+
+# Data
+data/*
+!data/.gitkeep
