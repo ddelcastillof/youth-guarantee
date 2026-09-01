@@ -13,7 +13,6 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-user=darwin.delcastillofernandez@glasgow.ac.uk
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-4
 
 module load apps/python3
 module load apps/miniforge
