@@ -6,8 +6,8 @@ execute:
 ---
 
 ```{r setup}
-#|include: false
-#|echo: false
+#| include: false
+#| echo: false
 
 library(data.table, quietly = TRUE)
 library(purrr, quietly = TRUE)
@@ -18,7 +18,8 @@ here::i_am("simpaths-results.qmd")
 
 ```{r data}
 raw_data <- rbindlist(list(
-    baseline = fread(here::here("data/simpaths_output/baseline/summarised_output.csv"))
+    baseline = fread(here::here("data/simpaths_output/baseline/summarised_output.csv")),
+    hi_only = fread(here::here("data/simpaths_output/hi-only/summarised_output.csv"))
 ))
 ```
 
@@ -41,3 +42,91 @@ data <- raw_data[, c(
 ]
 ```
 
+
+# Effect difference between scenarios
+
+```{r comparing-scenarios}
+#| include: true
+#| echo: false
+
+comparison <- merge(
+  raw_data[scenario != "baseline"],
+  raw_data[scenario == "baseline"],
+  by = c("seed", "time", "strata"),
+  suffixes = c(".int", ".bln")
+)
+
+walk(summary_vars, \(v) set(
+  comparison,
+  j = paste0(v, ".diff"),
+  value = comparison[[paste0(v, ".int")]] - comparison[[paste0(v, ".bln")]]
+))
+
+effects <- comparison[, c(
+    list(runs = .N),
+    map(.SD, \(x) median(x, na.rm = TRUE)) |> setNames(summary_vars),
+    map(.SD, \(x) quantile(x, probs = 0.025)) |> setNames(paste0(summary_vars, "_l")),
+    map(.SD, \(x) quantile(x, probs = 0.975)) |> setNames(paste0(summary_vars, "_u"))
+  ),
+  by = c("strata", "scenario.int", "time"),
+  .SDcols = paste0(summary_vars, ".diff")
+]
+```
+
+## MCS caseness
+
+```{r mcs-caseness}
+#| width: 5
+#| height: 3
+common_layers <- list(
+  geom_line(aes(color = scenario, linetype = scenario)),
+  geom_point(aes(color = scenario, shape = scenario)),
+  geom_ribbon(aes(fill = scenario), alpha = 0.05),
+  scale_color_brewer(palette = "Set1"),
+  scale_fill_brewer(palette = "Set1"),
+  scale_x_continuous(breaks = scales::breaks_pretty()),
+  theme_pubr()
+)
+
+data[strata == "population"] |>
+  _[time >= 2026] |>
+  ggplot() +
+  aes(x = time, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
+  labs(title = "Prevalence of MCS caseness in the population", x = "Year", y = "Prevalence") +
+  scale_y_continuous(labels = scales::percent) +
+  common_layers
+```
+
+## Employment rate in population
+```{r employment-rate}
+data[strata == "population"] |>
+  _[time >= 2026] |>
+  ggplot() +
+  aes(x = time, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
+  labs(title = "Employment rate in the population", x = "Year", y = "Rate") +
+  common_layers
+```
+
+## Change relative to baseline in 2035 (population)
+
+```{r change-mcs}
+effects |>
+  _[strata == "population"] |>
+  _[time == 2035] |>
+  ggplot() +
+  aes(x = mean_mcscase45, xmin = mean_mcscase45_l, xmax = mean_mcscase45_u, y = scenario.int) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_pubr()
+```
+
+```{r change-empl}
+effects |>
+  _[strata == "population"] |>
+  _[time == 2035] |>
+  ggplot() +
+  aes(x = emp_rate, xmin = emp_rate_l, xmax = emp_rate_u, y = scenario.int) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_pubr()
+```
