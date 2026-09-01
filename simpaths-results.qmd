@@ -1,0 +1,43 @@
+---
+title: "SimPaths results"
+format: html
+execute:
+  echo: false
+---
+
+```{r setup}
+#|include: false
+#|echo: false
+
+library(data.table, quietly = TRUE)
+library(purrr, quietly = TRUE)
+library(ggpubr, quietly = TRUE)
+
+here::i_am("simpaths-results.qmd")
+```
+
+```{r data}
+raw_data <- rbindlist(list(
+    baseline = fread(here::here("data/simpaths_output/baseline/summarised_output.csv"))
+))
+```
+
+```{r summary-data}
+summary_vars <- c(
+    "mean_mcscase45",
+    "mean_mcs",
+    "mean_mhcase",
+    "emp_rate"
+)
+
+data <- raw_data[, c(
+    list(runs = .N),
+    map(.SD, \(x) median(x, na.rm = TRUE)) |> setNames(summary_vars),
+    map(.SD, \(x) quantile(x, probs = 0.025)) |> setNames(paste0(summary_vars, "_l")),
+    map(.SD, \(x) quantile(x, probs = 0.975)) |> setNames(paste0(summary_vars, "_u"))
+),
+    by = c("strata", "scenario", "time"),
+    .SDcols = summary_vars
+]
+```
+
