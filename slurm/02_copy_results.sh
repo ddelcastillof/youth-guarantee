@@ -3,81 +3,85 @@
 # Utility script
 
 set -euo pipefail
-shopt -s nullglob
 
-HPC_SIMPATHS_DIR=/users/dd198b/Documents/GitHub/SimPaths
-HPC_YG_DIR=/users/dd198b/Documents/GitHub/youth-guarantee
+HPC_SIMPATHS_DIR=${HPC_SIMPATHS_DIR:-/users/dd198b/Documents/GitHub/SimPaths}
+HPC_YG_DIR=${HPC_YG_DIR:-/users/dd198b/Documents/GitHub/youth-guarantee}
 
-SCENARIO=${SCENARIO:-baseline}
+SCENARIOS=("baseline" "hi-only")
+if [[ $# -gt 0 ]]; then
+    SCENARIOS=("$@")
+fi
 
 SRC_ROOT=$HPC_SIMPATHS_DIR/output
-DEST_ROOT=$HPC_YG_DIR/data/simpaths_output/$SCENARIO
+DEST_ROOT=$HPC_YG_DIR/data/simpaths_output
 
 if [[ ! -d $SRC_ROOT ]]; then
     echo "SimPaths output directory not found: $SRC_ROOT" >&2
     exit 1
 fi
 
-mkdir -p "$DEST_ROOT"
+copy_scenario() {
+    local scenario=$1
+    local dest_root=$DEST_ROOT/$scenario
+    local manifest=$dest_root/output_dirs.txt
 
-copied_dirs=()
-skipped_dirs=()
-
-for src_dir in "$SRC_ROOT"/*/; do
-    src_dir=${src_dir%/}
-    run_name=$(basename "$src_dir")
-
-    # SimPaths writes a sibling logs directory alongside the run directories
-    if [[ $run_name == *logs ]]; then
-        continue
+    if [[ ! -f $manifest ]]; then
+        echo "[$scenario] No manifest at $manifest" >&2
+        echo "[$scenario] Run src/01_run_simpaths.py with SCENARIO=$scenario first" >&2
+        return 1
     fi
 
-    src_csv_dir=$src_dir/csv
-    if [[ ! -d $src_csv_dir ]]; then
-        echo "No csv/ folder in $run_name, skipping"
-        skipped_dirs+=("$run_name")
-        continue
-    fi
+    local copied_dirs=()
+    local skipped_dirs=()
+    local listed_dir run_name src_csv_dir person_src bu_src dest_csv_dir
 
-    person_src=$src_csv_dir/Person.csv
-    
-    bu_src=""
-    for candidate in "$src_csv_dir/BenefitUnit.csv"; do
-        if [[ -f $candidate ]]; then
-            bu_src=$candidate
-            break
+    while IFS= read -r listed_dir || [[ -n $listed_dir ]]; do
+        [[ -n $listed_dir ]] || continue
+
+        run_name=$(basename "$listed_dir")
+
+        if [[ $run_name == *logs ]]; then
+            continue
         fi
-    done
 
-    if [[ ! -f $person_src ]]; then
-        echo "Person.csv missing in $run_name, skipping"
-        skipped_dirs+=("$run_name")
-        continue
+        src_csv_dir=$SRC_ROOT/$run_name/csv
+        person_src=$src_csv_dir/Person.csv
+        bu_src=$src_csv_dir/BenefitUnit.csv
+        dest_csv_dir=$dest_root/$run_name/csv
+
+        if [[ ! -f $person_src || ! -f $bu_src ]]; then
+            if [[ -f $dest_csv_dir/Person.csv && -f $dest_csv_dir/BenefitUnit.csv ]]; then
+                echo "[$scenario] $run_name already copied"
+                copied_dirs+=("$dest_root/$run_name")
+            else
+                echo "[$scenario] Person.csv or BenefitUnit.csv missing in $run_name, skipping" >&2
+                skipped_dirs+=("$run_name")
+            fi
+            continue
+        fi
+
+        mkdir -p "$dest_csv_dir"
+        cp "$person_src" "$dest_csv_dir/Person.csv"
+        cp "$bu_src" "$dest_csv_dir/BenefitUnit.csv"
+
+        echo "[$scenario] Copied $run_name"
+        copied_dirs+=("$dest_root/$run_name")
+    done < "$manifest"
+
+    if [[ ${#copied_dirs[@]} -eq 0 ]]; then
+        echo "[$scenario] No run directories from the manifest found under $SRC_ROOT" >&2
+        return 1
     fi
 
-    if [[ -z $bu_src ]]; then
-        echo "BenefitUnits.csv missing in $run_name, skipping"
-        skipped_dirs+=("$run_name")
-        continue
-    fi
+    printf '%s\n' "${copied_dirs[@]}" > "$manifest"
 
-    dest_csv_dir=$DEST_ROOT/$run_name/csv
-    mkdir -p "$dest_csv_dir"
+    echo "[$scenario] Copied ${#copied_dirs[@]} run directories into $dest_root"
+    echo "[$scenario] Skipped ${#skipped_dirs[@]} directories"
+}
 
-    cp "$person_src" "$dest_csv_dir/Person.csv"
-    cp "$bu_src" "$dest_csv_dir/$(basename "$bu_src")"
-
-    echo "Copied $run_name ($(basename "$person_src"), $(basename "$bu_src"))"
-    copied_dirs+=("$DEST_ROOT/$run_name")
+status=0
+for scenario in "${SCENARIOS[@]}"; do
+    copy_scenario "$scenario" || status=1
 done
 
-if [[ ${#copied_dirs[@]} -eq 0 ]]; then
-    echo "No run directories with a csv/ folder found under $SRC_ROOT" >&2
-    exit 1
-fi
-
-# Point the summarising step at the copies rather than at the SimPaths output
-printf '%s\n' "${copied_dirs[@]}" > "$DEST_ROOT/output_dirs.txt"
-
-echo "Copied ${#copied_dirs[@]} run directories into $DEST_ROOT"
-echo "Skipped ${#skipped_dirs[@]} directories"
+exit $status
