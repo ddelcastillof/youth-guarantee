@@ -40,8 +40,6 @@ working = Path(reg_hi_only, WORKBOOK)
 reg_baseline.mkdir(parents=True, exist_ok=True)
 reg_hi_only.mkdir(parents=True, exist_ok=True)
 
-# The backup is captured once and reused afterwards, so a rerun cannot overwrite
-# the unmodified coefficients with an input file that already carries the effect.
 if not backup.is_file():
     copy(source, backup)
 copy(backup, working)
@@ -53,8 +51,6 @@ regressors = [row[0].value for row in sheet.iter_rows(min_row=2, max_col=1)]
 if REGRESSOR in regressors:
     sys.exit(f"{REGRESSOR} is already present in {SHEET}")
 
-# DHE_MCS1 holds a variance-covariance matrix: REGRESSOR, COEFFICIENT, then one
-# column per regressor. A new regressor therefore needs a row and a column.
 covariances = sheet.max_column - 2
 sheet.append([REGRESSOR, COEFFICIENT] + [0.0] * covariances)
 
@@ -63,7 +59,6 @@ sheet.cell(row=1, column=new_column, value=REGRESSOR)
 for row in range(2, sheet.max_row + 1):
     sheet.cell(row=row, column=new_column, value=0.0)
 
-# A zero on the diagonal makes the matrix singular when SimPaths draws from it.
 sheet.cell(row=sheet.max_row, column=new_column, value=VARIANCE)
 
 workbook.save(working)
