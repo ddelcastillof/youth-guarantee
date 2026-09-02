@@ -1,5 +1,5 @@
 """
-Run the SimPaths microsimulation in batches for a single scenario.
+Run the SimPaths microsimulation in batches for two or more scenarios.
 """
 
 import os
