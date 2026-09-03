@@ -19,13 +19,24 @@ module load apps/java/23.0.1/noarch
 
 export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 
-export SCENARIO=baseline
+# Overridden per scenario by slurm/submit_all.sh via --export=ALL,SCENARIO=<name>
+export SCENARIO=${SCENARIO:-baseline}
 export FIRST_YEAR=2023
 export LAST_YEAR=2035
 export POPULATION=2500
+# Seeds must be identical across scenarios: the report pairs them by seed
+# (simpaths-results.qmd merges by c("seed", "time", "strata"))
 export STARTING_SEED=100
 export RUNS_PER_BATCH=5
 export BATCHES=5
 export SIMPATHS_PATH=../SimPaths
+
+# Restore pristine inputs, then apply this scenario's mutation.
+# Must run inside the job: staging at submit time would have every scenario
+# overwrite SimPaths/input before any job started.
+if ! python3 src/00_stage_scenario.py; then
+    echo "Staging failed for scenario $SCENARIO, refusing to run the simulation" >&2
+    exit 1
+fi
 
 python3 src/01_run_simpaths.py

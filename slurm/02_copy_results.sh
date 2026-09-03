@@ -7,9 +7,21 @@ set -euo pipefail
 HPC_SIMPATHS_DIR=${HPC_SIMPATHS_DIR:-/users/dd198b/Documents/GitHub/SimPaths}
 HPC_YG_DIR=${HPC_YG_DIR:-/users/dd198b/Documents/GitHub/youth-guarantee}
 
-SCENARIOS=("baseline" "hi-only")
+SLURM_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$SLURM_DIR/scenario_list.sh"
+
+SCENARIOS=()
 if [[ $# -gt 0 ]]; then
     SCENARIOS=("$@")
+else
+    while IFS= read -r scenario; do
+        SCENARIOS+=("$scenario")
+    done < <(scenario_names)
+fi
+
+if [[ ${#SCENARIOS[@]} -eq 0 ]]; then
+    echo "No scenarios to copy" >&2
+    exit 1
 fi
 
 SRC_ROOT=$HPC_SIMPATHS_DIR/output

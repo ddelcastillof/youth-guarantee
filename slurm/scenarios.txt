@@ -1,0 +1,5 @@
+# Scenarios to run, one per line, in order. Blank lines and # comments ignored.
+# Each name needs a mutation registered in src/00_stage_scenario.py
+# (baseline needs none: it is the pristine inputs).
+baseline
+hi-only

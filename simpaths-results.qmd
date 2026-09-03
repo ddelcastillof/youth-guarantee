@@ -17,10 +17,17 @@ here::i_am("simpaths-results.qmd")
 ```
 
 ```{r data}
-raw_data <- rbindlist(list(
-    baseline = fread(here::here("data/simpaths_output/baseline/summarised_output.csv")),
-    hi_only = fread(here::here("data/simpaths_output/hi-only/summarised_output.csv"))
-))
+# Every scenario that has been summarised; the scenario column comes from the CSV
+scenario_files <- list.files(
+    here::here("data/simpaths_output"),
+    pattern = "^summarised_output\\.csv$",
+    recursive = TRUE,
+    full.names = TRUE
+)
+
+stopifnot(length(scenario_files) > 0)
+
+raw_data <- rbindlist(lapply(scenario_files, fread))
 ```
 
 ```{r summary-data}
