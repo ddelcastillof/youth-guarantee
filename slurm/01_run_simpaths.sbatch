@@ -14,8 +14,18 @@
 #SBATCH --mail-user=darwin.delcastillofernandez@glasgow.ac.uk
 #SBATCH --mail-type=ALL
 
-module load apps/python3
+module purge
+module load apps/miniforge
 module load apps/java/23.0.1/noarch
+
+# src/00_stage_scenario.py imports openpyxl, which the bare apps/python3 module
+# does not carry. Use the same env slurm/03_summarise.sh activates, built from
+# requirements.txt.
+source "$(conda info --base)/etc/profile.d/conda.sh"
+if ! conda activate yg-py; then
+    echo "Could not activate conda env yg-py; create it from requirements.txt" >&2
+    exit 1
+fi
 
 export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 

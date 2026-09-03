@@ -22,5 +22,7 @@ report/*
 !report/.gitkeep
 
 # Data
-data/*
 !data/.gitkeep
+!data/scenario_inputs/pristine
+# Python bytecode
+__pycache__/
