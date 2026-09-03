@@ -27,7 +27,7 @@ scenario_files <- list.files(
 
 stopifnot(length(scenario_files) > 0)
 
-raw_data <- rbindlist(lapply(scenario_files, fread))
+raw_data <- rbindlist(map(scenario_files, \(x) fread(x)))
 ```
 
 ```{r summary-data}
