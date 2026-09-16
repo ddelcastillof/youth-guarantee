@@ -80,7 +80,7 @@ effects <- comparison[, c(
 ]
 ```
 
-## MCS caseness
+## Average MCS
 
 ```{r mcs-caseness}
 #| width: 5
@@ -98,6 +98,20 @@ common_layers <- list(
 data[strata == "population"] |>
   _[time >= 2026] |>
   ggplot() +
+  aes(x = time, y = mean_mcs, ymin = mean_mcs_l, ymax = mean_mcs_u) +
+  labs(title = "Mean MCS in the population", x = "Year", y = "Mean MCS score (0-100)") +
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +
+  common_layers
+```
+
+## MCS caseness
+
+```{r mcs-average}
+#| width: 5
+#| height: 3
+data[strata == "population"] |>
+  _[time >= 2026] |>
+  ggplot() +
   aes(x = time, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
   labs(title = "Prevalence of MCS caseness in the population", x = "Year", y = "Prevalence") +
   scale_y_continuous(labels = scales::percent) +
@@ -106,6 +120,8 @@ data[strata == "population"] |>
 
 ## Employment rate in population
 ```{r employment-rate}
+#| width: 5
+#| height: 3
 data[strata == "population"] |>
   _[time >= 2026] |>
   ggplot() +
@@ -117,6 +133,8 @@ data[strata == "population"] |>
 ## Change relative to baseline in 2035 (population)
 
 ```{r change-mcs}
+#| width: 5
+#| height: 3
 effects |>
   _[strata == "population"] |>
   _[time == 2035] |>
@@ -128,6 +146,8 @@ effects |>
 ```
 
 ```{r change-empl}
+#| width: 5
+#| height: 3
 effects |>
   _[strata == "population"] |>
   _[time == 2035] |>
