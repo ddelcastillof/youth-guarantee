@@ -16,7 +16,7 @@
 
 module purge
 module load apps/miniforge
-module load apps/java/23.0.1/noarch
+# module load apps/java/23.0.1/noarch SimPaths now uses Java 25
 
 # src/00_stage_scenario.py imports openpyxl, which the bare apps/python3 module
 # does not carry. Use the same env slurm/03_summarise.sh activates, built from
