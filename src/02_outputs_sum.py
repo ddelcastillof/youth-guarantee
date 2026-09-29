@@ -20,10 +20,13 @@ output_dirs = (results_path / "output_dirs.txt").read_text().splitlines()
 person_cols = [
     "run", "time", "id_Person", "idBu", "demAge", "demMaleFlag",
     "eduHighestC4", "labC4", "healthMentalMcs", "healthPhysicalPcs",
-    "healthPsyDstrss0to12", "healthSelfRated",
+    "healthPsyDstrss0to12", "healthSelfRated"
 ]
 
-bu_cols = ["run", "time", "id_BenefitUnit", "yPvrtyFlag", "yDispEquivYear"]
+bu_cols = [
+    "run", "time", "id_BenefitUnit", "yPvrtyFlag", "yDispEquivYear",
+    "yBenUCReceivedFlag"
+]
 
 all_data = []
 
@@ -50,7 +53,7 @@ for output_dir in (output_dirs):
     all_data.append(merged_data)
  
 all_data = pl.concat(all_data)
-     
+
 # Create employment variables
 all_data = all_data.with_columns(
     pl.when(pl.col("labC4") == "EmployedOrSelfEmployed")
@@ -61,8 +64,23 @@ all_data = all_data.with_columns(
     .alias("employed")
     )
 
-# Young labour population
-final_data = all_data.filter((pl.col("demAge") >= 18) & (pl.col("demAge") < 25))
+# Create lagged UC receipt, employment, activity status and age
+person_keys = ["seed", "run", "id_Person"]
+has_prev_year = pl.col("time").shift(1).over(person_keys) == pl.col("time") - 1
+all_data = all_data.sort([*person_keys, "time"]).with_columns(
+    pl.when(has_prev_year)
+    .then(pl.col(col).shift(1).over(person_keys))
+    .alias(f"{col}L1")
+    for col in ["yBenUCReceivedFlag", "employed", "labC4", "demAge"]
+    )
+
+# Young labour population, aged 18-24 in the year eligibility is assessed
+final_data = all_data.filter(pl.col("demAgeL1").is_between(18, 24))
+
+# Filtering those who were eligible in the previous year: UC and not employed
+final_data = final_data.filter(
+    (pl.col("yBenUCReceivedFlagL1") == 1) & (pl.col("labC4L1") == "NotEmployed")
+    )
 
 # Grouping all variables individual statistics
 MCS_THRESHOLDS = (50, 45, 46, 40, 35, 30)
