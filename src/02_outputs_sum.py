@@ -17,16 +17,18 @@ results_path = REPO_ROOT / "data" / "simpaths_output" / scenario
 output_file = results_path / "summarised_output.csv"
 output_dirs = (results_path / "output_dirs.txt").read_text().splitlines()
 
-person_cols = [
-    "run", "time", "id_Person", "idBu", "demAge", "demMaleFlag",
-    "eduHighestC4", "labC4", "healthMentalMcs", "healthPhysicalPcs",
-    "healthPsyDstrss0to12", "healthSelfRated"
-]
+# Column types match the Java fields SimPaths exports
+person_schema = {
+    "run": pl.Int64, "time": pl.Float64, "id_Person": pl.Int64, "idBu": pl.Int64,
+    "demAge": pl.Int64, "demMaleFlag": pl.String, "eduHighestC4": pl.String,
+    "labC4": pl.String, "healthMentalMcs": pl.Float64, "healthPhysicalPcs": pl.Float64,
+    "healthPsyDstrss0to12": pl.Float64, "healthSelfRated": pl.String,
+}
 
-bu_cols = [
-    "run", "time", "id_BenefitUnit", "yPvrtyFlag", "yDispEquivYear",
-    "yBenUCReceivedFlag"
-]
+bu_schema = {
+    "run": pl.Int64, "time": pl.Float64, "id_BenefitUnit": pl.Int64,
+    "yPvrtyFlag": pl.Int64, "yDispEquivYear": pl.Float64, "yBenUCReceivedFlag": pl.Int64,
+}
 
 all_data = []
 
@@ -44,8 +46,14 @@ for output_dir in (output_dirs):
     print(f"Reading output directory {output_dir} assuming seed is {seed}")
 
     # JAS-mine writes missing values as the literal "null"
-    person_data = pl.read_csv(source = person_path, columns = person_cols, null_values = "null")
-    bu_data = pl.read_csv(source = bu_path, columns = bu_cols, null_values = "null")
+    person_data = pl.read_csv(
+        source = person_path, columns = list(person_schema),
+        schema_overrides = person_schema, null_values = "null",
+    )
+    bu_data = pl.read_csv(
+        source = bu_path, columns = list(bu_schema),
+        schema_overrides = bu_schema, null_values = "null",
+    )
 
     merged_data = person_data.join(
         bu_data,
@@ -70,21 +78,18 @@ all_data = all_data.with_columns(
 
 # Create lagged UC receipt, employment, activity status and age
 person_keys = ["seed", "run", "id_Person"]
-has_prev_year = pl.col("time").shift(1).over(person_keys) == pl.col("time") - 1
-all_data = all_data.sort([*person_keys, "time"]).with_columns(
-    pl.when(has_prev_year)
-    .then(pl.col(col).shift(1).over(person_keys))
-    .alias(f"{col}L1")
-    for col in ["yBenUCReceivedFlag", "employed", "labC4", "demAge"]
+
+# Eligible in a year: aged 18-24, benefit unit on UC and not employed
+eligible = (
+    pl.col("demAge").is_between(18, 24)
+    & (pl.col("yBenUCReceivedFlag") == 1)
+    & (pl.col("labC4") == "NotEmployed")
     )
 
-# Young labour population, aged 18-24 in the year eligibility is assessed
-final_data = all_data.filter(pl.col("demAgeL1").is_between(18, 24))
-
-# Filtering those who were eligible in the previous year: UC and not employed
-final_data = final_data.filter(
-    (pl.col("yBenUCReceivedFlagL1") == 1) & (pl.col("labC4L1") == "NotEmployed")
-    )
+# Once eligible, always in: every year after first becoming eligible,
+# regardless of later age, UC receipt or employment
+first_eligible = pl.col("time").filter(eligible).min().over(person_keys)
+final_data = all_data.filter(pl.col("time") > first_eligible)
 
 # Grouping all variables individual statistics
 MCS_THRESHOLDS = (50, 45, 46, 40, 35, 30)
