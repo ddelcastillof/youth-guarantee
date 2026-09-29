@@ -40,8 +40,9 @@ for output_dir in (output_dirs):
     seed = Path(output_dir).name.split("_")[1]
     print(f"Reading output directory {output_dir} assuming seed is {seed}")
 
-    person_data = pl.read_csv(source = person_path, columns = person_cols)
-    bu_data = pl.read_csv(source = bu_path, columns = bu_cols)
+    # JAS-mine writes missing values as the literal "null"
+    person_data = pl.read_csv(source = person_path, columns = person_cols, null_values = "null")
+    bu_data = pl.read_csv(source = bu_path, columns = bu_cols, null_values = "null")
 
     merged_data = person_data.join(
         bu_data,
