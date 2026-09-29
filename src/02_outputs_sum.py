@@ -37,7 +37,10 @@ for output_dir in (output_dirs):
         sys.exit(f"Person.csv not found at {person_path}")
     if not bu_path.is_file():
         sys.exit(f"BenefitUnit.csv not found at {bu_path}")
-    seed = Path(output_dir).name.split("_")[1]
+    # Multirun folders are <timestamp>_<seed>_<run>; single runs are <timestamp>
+    # only and always use singlerun.jar's fixed seed, so every scenario pairs up
+    name_parts = Path(output_dir).name.split("_")
+    seed = name_parts[1] if len(name_parts) > 1 else "606"
     print(f"Reading output directory {output_dir} assuming seed is {seed}")
 
     # JAS-mine writes missing values as the literal "null"
