@@ -45,7 +45,7 @@ def pristine_files():
     if not PRISTINE_PATH.is_dir():
         sys.exit(
             f"Pristine inputs not found at {PRISTINE_PATH}\n"
-            "Run slurm/00_init_pristine_inputs.sh once before staging any scenario."
+            "Run ./slurm/submit_all.sh --init once before staging any scenario."
         )
     files = sorted(p for p in PRISTINE_PATH.iterdir() if p.suffix == ".xlsx")
     if not files:
