@@ -78,18 +78,24 @@ all_data = all_data.with_columns(
 
 # Create lagged UC receipt, employment, activity status and age
 person_keys = ["seed", "run", "id_Person"]
+has_prev_year = pl.col("time").shift(1).over(person_keys) == pl.col("time") - 1
+all_data = all_data.sort([*person_keys, "time"]).with_columns(
+    pl.when(has_prev_year)
+    .then(pl.col(col).shift(1).over(person_keys))
+    .alias(f"{col}L1")
+    for col in ["yBenUCReceivedFlag", "employed", "labC4", "demAge"]
+    )
 
 # Eligible in a year: aged 18-24, benefit unit on UC and not employed
 eligible = (
-    pl.col("demAge").is_between(18, 24)
-    & (pl.col("yBenUCReceivedFlag") == 1)
-    & (pl.col("labC4") == "NotEmployed")
+    pl.col("demAgeL1").is_between(18, 24)
+    & (pl.col("yBenUCReceivedFlagL1") == 1)
+    & (pl.col("labC4L1") == "NotEmployed")
     )
 
-# Once eligible, always in: every year after first becoming eligible,
-# regardless of later age, UC receipt or employment
-first_eligible = pl.col("time").filter(eligible).min().over(person_keys)
-final_data = all_data.filter(pl.col("time") > first_eligible)
+# Eligible in 2020 only, then followed every year after, regardless of later age, UC receipt or employment.
+first_eligible = pl.col("time").filter(eligible & (pl.col("time") == 2021)).min().over(person_keys)
+final_data = all_data.filter(pl.col("time") >= first_eligible)
 
 # Grouping all variables individual statistics
 MCS_THRESHOLDS = (50, 45, 46, 40, 35, 30)
