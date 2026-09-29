@@ -31,14 +31,14 @@ export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 
 # Overridden per scenario by slurm/submit_all.sh via --export=ALL,SCENARIO=<name>
 export SCENARIO=${SCENARIO:-baseline}
-export FIRST_YEAR=2023
-export LAST_YEAR=2035
-export POPULATION=2500
+export FIRST_YEAR=2019
+# export LAST_YEAR=2035 not for single runs
+# export POPULATION=2500 not for single runs
 # Seeds must be identical across scenarios: the report pairs them by seed
 # (simpaths-results.qmd merges by c("seed", "time", "strata"))
-export STARTING_SEED=100
-export RUNS_PER_BATCH=5
-export BATCHES=5
+# export STARTING_SEED=100
+# export RUNS_PER_BATCH=5
+# export BATCHES=5
 export SIMPATHS_PATH=../SimPaths
 
 # Restore pristine inputs, then apply this scenario's mutation.
