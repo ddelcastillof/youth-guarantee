@@ -62,7 +62,7 @@ all_data = all_data.with_columns(
     )
 
 # Young labour population
-final_data = all_data.filter((pl.col("demAge") >= 18) & (pl.col("demAge") <= 25))
+final_data = all_data.filter((pl.col("demAge") >= 18) & (pl.col("demAge") < 25))
 
 # Grouping all variables individual statistics
 MCS_THRESHOLDS = (50, 45, 46, 40, 35, 30)
