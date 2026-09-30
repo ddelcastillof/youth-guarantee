@@ -19,10 +19,15 @@ from scenarios import hi_only  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRISTINE_PATH = REPO_ROOT / "data" / "scenario_inputs" / "pristine"
 
-# Scenarios with no entry here run on the pristine inputs; "baseline" is the
-# only such scenario allowed, so a mistyped name cannot quietly become baseline
+# Scenarios mapped to None run on the pristine inputs; any other name missing
+# here is refused, so a mistyped name cannot quietly become baseline.
+# "baseline" needs no entry
 SCENARIO_MUTATIONS = {
     "hi-only": hi_only.apply,
+    # Supported employment, the youth guarantee part of these two, is switched on
+    # in the config by src/00_stage_config.py rather than in the inputs
+    "yg-scenario-only": None,
+    "both-scenarios": hi_only.apply,
 }
 
 BASELINE = "baseline"
