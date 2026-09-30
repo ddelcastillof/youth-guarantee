@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from scenarios import hi_only  # noqa: E402
+from scenarios import hi_only
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRISTINE_PATH = REPO_ROOT / "data" / "scenario_inputs" / "pristine"
