@@ -15,22 +15,28 @@
 # Usage: ./slurm/submit_all.sh                       # every scenario in SCENARIOS
 #        ./slurm/submit_all.sh hi-only               # just the ones named
 #        ./slurm/submit_all.sh --stage summarise X   # one stage in place, e.g. to re-summarise
+#        ./slurm/submit_all.sh --stage effects       # re-run the cohort comparison in place
 #        ./slurm/submit_all.sh --download [X ...]    # on your machine: fetch the summaries
 #        ./slurm/submit_all.sh --init                # once ever: snapshot the pristine inputs
 #
 # Submitting queues this same file as every job, with `--stage <stage> <scenario>`
-# appended; the #SBATCH lines above are what both stages share.
+# appended; the #SBATCH lines above are what all stages share.
 #
 # SimPaths/input is shared mutable state: each scenario stages its own inputs
 # there, so no two runs may overlap. Each run job therefore depends on the
 # previous run job. Summarising reads copies under data/simpaths_output and is
-# free to overlap with later runs.
+# free to overlap with later runs. The effects job compares every scenario with
+# baseline, so it waits for all of them to be summarised.
 #
 #   run(A) --afterok--> run(B) --afterok--> run(C)
 #     |                   |                   |
 #  afterok             afterok             afterok
 #     v                   v                   v
 #  summarise(A)       summarise(B)       summarise(C)
+#     |                   |                   |
+#     +------------- afterok (all) -----------+
+#                         v
+#                      effects
 
 set -euo pipefail
 
@@ -124,6 +130,11 @@ stage_summarise() {
     python3 src/02_outputs_sum.py
 }
 
+stage_effects() {
+    # Reads every scenario's person_years.parquet, whichever job wrote it
+    python3 src/03_cohort_effects.py
+}
+
 submit() {
     (( $# )) || set -- "${SCENARIOS[@]}"
 
@@ -135,7 +146,7 @@ submit() {
     # #SBATCH --output=logs/%x-%j.out fails the job if this is missing
     mkdir -p logs
 
-    local scenario run_id sum_id prev_run=""
+    local scenario run_id sum_id effects_id prev_run="" sum_ids=()
     for scenario in "$@"; do
         run_id=$(sbatch --parsable ${prev_run:+--dependency=afterok:$prev_run} \
             -J "run_$scenario" --time=2-00:00:00 --mem=8G \
@@ -147,7 +158,15 @@ submit() {
 
         printf '%-16s run=%-10s summarise=%s\n' "$scenario" "$run_id" "$sum_id"
         prev_run=$run_id
+        sum_ids+=("$sum_id")
     done
+
+    # Scenarios summarised by earlier submissions are compared too, as their
+    # person_years.parquet is already in place
+    effects_id=$(sbatch --parsable --dependency=afterok:"$(IFS=:; echo "${sum_ids[*]}")" \
+        -J effects --time=01:00:00 --mem=8G \
+        "$SELF" --stage effects)
+    printf '%-16s effects=%s\n' "(all)" "$effects_id"
 
     echo
     echo "Submitted $# scenarios. Watch with: squeue -u \$USER"
@@ -161,11 +180,18 @@ download() {
     local scenario file
     for scenario in "$@"; do
         mkdir -p "data/simpaths_output/$scenario"
-        for file in output_dirs.txt summarised_output.csv staged_inputs.txt simpaths_config.yml; do
+        # person_years.parquet lets src/03_cohort_effects.py be re-run locally
+        for file in output_dirs.txt person_years.parquet staged_inputs.txt simpaths_config.yml; do
             echo "Fetching $scenario/$file"
             scp "$HPC_LOGIN:$HPC_REPO/data/simpaths_output/$scenario/$file" \
                 "data/simpaths_output/$scenario/$file"
         done
+    done
+
+    # Written once for all scenarios by the effects stage; what simpaths-results.qmd reads
+    for file in cohort_levels.csv cohort_effects.csv; do
+        echo "Fetching $file"
+        scp "$HPC_LOGIN:$HPC_REPO/data/simpaths_output/$file" "data/simpaths_output/$file"
     done
 
     echo "Downloaded $# scenarios"
@@ -227,12 +253,18 @@ if [[ ${1:-} == --stage ]]; then
     # A job runs a spooled copy of this file, so BASH_SOURCE no longer points into
     # the repo; it starts where it was submitted from, which submit() makes the root
     cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")/..}"
-    export SCENARIO=$3
+    # effects covers every scenario at once, so it is the one stage without a name
+    export SCENARIO=${3:-}
+    if [[ ${2:-} != effects && -z $SCENARIO ]]; then
+        echo "--stage ${2:-} needs a scenario name" >&2
+        exit 1
+    fi
     activate_env
     case $2 in
         run) stage_run ;;
         summarise) stage_summarise ;;
-        *) echo "Unknown stage: $2 (expected run or summarise)" >&2; exit 1 ;;
+        effects) stage_effects ;;
+        *) echo "Unknown stage: $2 (expected run, summarise or effects)" >&2; exit 1 ;;
     esac
     exit
 fi
