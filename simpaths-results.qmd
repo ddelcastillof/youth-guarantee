@@ -17,143 +17,228 @@ here::i_am("simpaths-results.qmd")
 ```
 
 ```{r data}
-# Every scenario that has been summarised; the scenario column comes from the CSV
-scenario_files <- list.files(
-    here::here("data/simpaths_output"),
-    pattern = "^summarised_output\\.csv$",
-    recursive = TRUE,
-    full.names = TRUE
-)
-
-stopifnot(length(scenario_files) > 0)
-
-raw_data <- rbindlist(map(scenario_files, \(x) fread(x)))
+levels_raw <- fread(here::here("data/simpaths_output/cohort_levels.csv"))
+effects_raw <- fread(here::here("data/simpaths_output/cohort_effects.csv"))
 ```
 
 ```{r summary-data}
 summary_vars <- c(
-    "mean_mcscase45",
+    "emp_rate",
     "mean_mcs",
+    "mean_mcscase45",
     "mean_mhcase",
-    "emp_rate"
+    "placed_rate",
+    "elig_rate"
 )
 
-data <- raw_data[, c(
-    list(runs = .N),
-    map(.SD, \(x) median(x, na.rm = TRUE)) |> setNames(summary_vars),
-    map(.SD, \(x) quantile(x, probs = 0.025)) |> setNames(paste0(summary_vars, "_l")),
-    map(.SD, \(x) quantile(x, probs = 0.975)) |> setNames(paste0(summary_vars, "_u"))
+# Median and 95% interval across runs; with a single run the interval collapses to the line
+summarise_runs <- function(x) x[, c(
+    list(runs = .N, n = median(n)),
+    map(.SD, \(v) median(v, na.rm = TRUE)) |> setNames(summary_vars),
+    map(.SD, \(v) quantile(v, probs = 0.025, na.rm = TRUE)) |> setNames(paste0(summary_vars, "_l")),
+    map(.SD, \(v) quantile(v, probs = 0.975, na.rm = TRUE)) |> setNames(paste0(summary_vars, "_u"))
 ),
-    by = c("strata", "scenario", "time"),
+    by = c("scenario", "timescale", "t"),
     .SDcols = summary_vars
 ]
+
+data <- summarise_runs(levels_raw)
+effects <- summarise_runs(effects_raw)
 ```
 
-
-# Effect difference between scenarios
-
-```{r comparing-scenarios}
-#| include: true
-#| echo: false
-
-comparison <- merge(
-  raw_data[scenario != "baseline"],
-  raw_data[scenario == "baseline"],
-  by = c("seed", "time", "strata"),
-  suffixes = c(".int", ".bln")
+```{r plot-layers}
+# Each scenario keeps its colour, shape and line in every plot, including the
+# effects plots, which have no baseline to take the first colour
+scenarios <- sort(unique(levels_raw$scenario))
+scenario_colours <- setNames(
+  scales::brewer_pal(palette = "Set1")(max(3, length(scenarios)))[seq_along(scenarios)],
+  scenarios
 )
 
-walk(summary_vars, \(v) set(
-  comparison,
-  j = paste0(v, ".diff"),
-  value = comparison[[paste0(v, ".int")]] - comparison[[paste0(v, ".bln")]]
-))
-
-effects <- comparison[, c(
-    list(runs = .N),
-    map(.SD, \(x) median(x, na.rm = TRUE)) |> setNames(summary_vars),
-    map(.SD, \(x) quantile(x, probs = 0.025)) |> setNames(paste0(summary_vars, "_l")),
-    map(.SD, \(x) quantile(x, probs = 0.975)) |> setNames(paste0(summary_vars, "_u"))
-  ),
-  by = c("strata", "scenario.int", "time"),
-  .SDcols = paste0(summary_vars, ".diff")
-]
-```
-
-## Average MCS
-
-```{r mcs-caseness}
-#| width: 5
-#| height: 3
 common_layers <- list(
   geom_line(aes(color = scenario, linetype = scenario)),
   geom_point(aes(color = scenario, shape = scenario)),
   geom_ribbon(aes(fill = scenario), alpha = 0.05),
-  scale_color_brewer(palette = "Set1"),
-  scale_fill_brewer(palette = "Set1"),
+  scale_color_manual(values = scenario_colours),
+  scale_fill_manual(values = scenario_colours),
+  scale_shape_manual(values = setNames(rep_len(c(16, 17, 15, 3), length(scenarios)), scenarios)),
+  scale_linetype_manual(values = setNames(rep_len(c("solid", "dashed", "dotted", "dotdash"), length(scenarios)), scenarios)),
   scale_x_continuous(breaks = scales::breaks_pretty()),
   theme_pubr()
 )
 
-data[strata == "population"] |>
-  _[time >= 2021] |>
+# k = 0 is the first year a person is eligible in baseline
+since_eligible_layers <- list(
+  geom_vline(xintercept = -0.5, linetype = "dotted"),
+  labs(x = "Years since first eligible")
+)
+
+# Effects in percentage points; no fixed accuracy, so neighbouring breaks never share a label
+label_pp <- scales::label_number(scale = 100, suffix = " pp")
+```
+
+# Cohort
+
+Everyone SimPaths finds eligible for supported employment at any point in 2021–2026 of the baseline run, followed from the year before they are first eligible. The same people are compared in every scenario.
+
+```{r cohort-size}
+data[scenario == "baseline" & timescale == "since_eligible", .(
+  `Years since first eligible` = t,
+  `People followed` = n
+)] |>
+  knitr::kable()
+```
+
+At k = −1 scenarios only agree for people first eligible in 2021; later entrants' year before eligibility falls inside the programme window, where the youth guarantee runs may already have placed them.
+
+# Levels by years since first eligible
+
+## Employment rate
+
+```{r levels-employment}
+#| fig-width: 6
+#| fig-height: 4
+data[timescale == "since_eligible"] |>
   ggplot() +
-  aes(x = time, y = mean_mcs, ymin = mean_mcs_l, ymax = mean_mcs_u) +
-  labs(title = "Mean MCS in the population", x = "Year", y = "Mean MCS score (0-100)") +
-  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +
-  common_layers
+  aes(x = t, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
+  labs(title = "Employment rate in the cohort", y = "Employment rate") +
+  scale_y_continuous(labels = scales::label_percent()) +
+  common_layers +
+  since_eligible_layers
+```
+
+## Average MCS
+
+```{r levels-mcs}
+#| fig-width: 6
+#| fig-height: 4
+data[timescale == "since_eligible"] |>
+  ggplot() +
+  aes(x = t, y = mean_mcs, ymin = mean_mcs_l, ymax = mean_mcs_u) +
+  labs(title = "Mean MCS in the cohort", y = "Mean MCS score (0-100)") +
+  scale_y_continuous(labels = scales::label_number()) +
+  common_layers +
+  since_eligible_layers
 ```
 
 ## MCS caseness
 
-```{r mcs-average}
-#| width: 5
-#| height: 3
-data[strata == "population"] |>
-  _[time >= 2021] |>
+```{r levels-mcs-caseness}
+#| fig-width: 6
+#| fig-height: 4
+data[timescale == "since_eligible"] |>
   ggplot() +
-  aes(x = time, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
-  labs(title = "Prevalence of MCS caseness in the population", x = "Year", y = "Prevalence") +
-  scale_y_continuous(labels = scales::percent) +
-  common_layers
+  aes(x = t, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
+  labs(title = "Prevalence of MCS caseness (MCS < 45) in the cohort", y = "Prevalence") +
+  scale_y_continuous(labels = scales::label_percent()) +
+  common_layers +
+  since_eligible_layers
 ```
 
-## Employment rate in population
-```{r employment-rate}
-#| width: 5
-#| height: 3
-data[strata == "population"] |>
-  _[time >= 2021] |>
+# Change relative to baseline by years since first eligible
+
+## Employment rate
+
+```{r effects-employment}
+#| fig-width: 6
+#| fig-height: 4
+effects[timescale == "since_eligible"] |>
   ggplot() +
-  aes(x = time, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
-  labs(title = "Employment rate in the population", x = "Year", y = "Rate (%)") +
-  common_layers
+  aes(x = t, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Change in employment rate", y = "Difference from baseline") +
+  scale_y_continuous(labels = label_pp) +
+  common_layers +
+  since_eligible_layers
 ```
 
-## Change relative to baseline in 2026 (population)
+## Average MCS
+
+```{r effects-mcs}
+#| fig-width: 6
+#| fig-height: 4
+effects[timescale == "since_eligible"] |>
+  ggplot() +
+  aes(x = t, y = mean_mcs, ymin = mean_mcs_l, ymax = mean_mcs_u) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Change in mean MCS", y = "Difference from baseline (MCS points)") +
+  scale_y_continuous(labels = scales::label_number()) +
+  common_layers +
+  since_eligible_layers
+```
+
+## MCS caseness
+
+```{r effects-mcs-caseness}
+#| fig-width: 6
+#| fig-height: 4
+effects[timescale == "since_eligible"] |>
+  ggplot() +
+  aes(x = t, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Change in MCS caseness (MCS < 45)", y = "Difference from baseline") +
+  scale_y_continuous(labels = label_pp) +
+  common_layers +
+  since_eligible_layers
+```
+
+# Change relative to baseline in 2026
+
+People who have been eligible by 2026, in 2026.
 
 ```{r change-mcs}
-#| width: 5
-#| height: 3
+#| fig-width: 5
+#| fig-height: 3
 effects |>
-  _[strata == "population"] |>
-  _[time == 2021] |>
+  _[timescale == "calendar"] |>
+  _[t == 2026] |>
   ggplot() +
-  aes(x = mean_mcscase45, xmin = mean_mcscase45_l, xmax = mean_mcscase45_u, y = scenario.int) +
+  aes(x = mean_mcscase45, xmin = mean_mcscase45_l, xmax = mean_mcscase45_u, y = scenario) +
   geom_pointrange() +
   geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = "Change in MCS caseness", y = NULL) +
+  scale_x_continuous(labels = label_pp) +
   theme_pubr()
 ```
 
 ```{r change-empl}
-#| width: 5
-#| height: 3
+#| fig-width: 5
+#| fig-height: 3
 effects |>
-  _[strata == "population"] |>
-  _[time == 2021] |>
+  _[timescale == "calendar"] |>
+  _[t == 2026] |>
   ggplot() +
-  aes(x = emp_rate, xmin = emp_rate_l, xmax = emp_rate_u, y = scenario.int) +
+  aes(x = emp_rate, xmin = emp_rate_l, xmax = emp_rate_u, y = scenario) +
   geom_pointrange() +
   geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = "Change in employment rate", y = NULL) +
+  scale_x_continuous(labels = label_pp) +
   theme_pubr()
+```
+
+# Programme reach
+
+Share of the cohort placed by the programme, and share eligible under each scenario's own run. SimPaths draws UC receipt from its global random number generator, so eligibility, and with it who gets placed, is reshuffled between runs; a placement rate well below the eligible rate in baseline dilutes the youth guarantee effects above.
+
+```{r reach}
+#| fig-width: 6
+#| fig-height: 4
+data[timescale == "since_eligible" & scenario != "baseline"] |>
+  melt(
+    id.vars = c("scenario", "t"),
+    measure.vars = c("placed_rate", "elig_rate"),
+    variable.name = "measure"
+  ) |>
+  _[, measure := fifelse(measure == "placed_rate", "Placed", "Eligible in own run")] |>
+  ggplot() +
+  aes(x = t, y = value, color = scenario, linetype = measure) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Programme reach in the cohort", y = "Share of cohort", linetype = NULL) +
+  scale_color_manual(values = scenario_colours) +
+  scale_x_continuous(breaks = scales::breaks_pretty()) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  theme_pubr() +
+  theme(legend.box = "vertical") +
+  since_eligible_layers
 ```
