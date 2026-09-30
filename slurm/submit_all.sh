@@ -35,21 +35,24 @@
 set -euo pipefail
 
 # Run in this order. Each name needs a mutation registered in src/00_stage_scenario.py
-# (baseline needs none: it is the pristine inputs).
-SCENARIOS=(baseline hi-only)
+# (baseline needs none: it is the pristine inputs). Scenarios that switch on supported
+# employment are listed in src/00_stage_config.py.
+SCENARIOS=(baseline yg-scenario-only hi-only both-scenarios)
 
 # Input files any scenario mutates; add to this list when a scenario touches a new one
 PRISTINE_FILES=(reg_health_wellbeing.xlsx)
 
 export SIMPATHS_PATH=${SIMPATHS_PATH:-../SimPaths}
+# Written into SimPaths/config by src/00_stage_config.py each run
+export SIMPATHS_CONFIG=youth_guarantee.yml
 export FIRST_YEAR=2019
-# export LAST_YEAR=2035 not for single runs
-# export POPULATION=2500 not for single runs
+export LAST_YEAR=2026
+export POPULATION=50000
 # Seeds must be identical across scenarios: the report pairs them by seed
 # (simpaths-results.qmd merges by c("seed", "time", "strata"))
-# export STARTING_SEED=100
-# export RUNS_PER_BATCH=5
-# export BATCHES=5
+export STARTING_SEED=606
+export RUNS_PER_BATCH=1
+export BATCHES=1
 
 HPC_LOGIN=dd198b@mars-login.ice.gla.ac.uk
 HPC_REPO=/users/dd198b/Documents/GitHub/youth-guarantee
@@ -78,6 +81,8 @@ stage_run() {
     # Must run inside the job: staging at submit time would have every scenario
     # overwrite SimPaths/input before any job started.
     python3 src/00_stage_scenario.py
+    # Same for SimPaths/config: switches supported employment on or off for this scenario
+    python3 src/00_stage_config.py
     python3 src/01_run_simpaths.py
 }
 
@@ -156,7 +161,7 @@ download() {
     local scenario file
     for scenario in "$@"; do
         mkdir -p "data/simpaths_output/$scenario"
-        for file in output_dirs.txt summarised_output.csv staged_inputs.txt; do
+        for file in output_dirs.txt summarised_output.csv staged_inputs.txt simpaths_config.yml; do
             echo "Fetching $scenario/$file"
             scp "$HPC_LOGIN:$HPC_REPO/data/simpaths_output/$scenario/$file" \
                 "data/simpaths_output/$scenario/$file"
