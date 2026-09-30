@@ -126,11 +126,11 @@ data[strata == "population"] |>
   _[time >= 2021] |>
   ggplot() +
   aes(x = time, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
-  labs(title = "Employment rate in the population", x = "Year", y = "Rate") +
+  labs(title = "Employment rate in the population", x = "Year", y = "Rate (%)") +
   common_layers
 ```
 
-## Change relative to baseline in 2035 (population)
+## Change relative to baseline in 2026 (population)
 
 ```{r change-mcs}
 #| width: 5
