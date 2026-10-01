@@ -47,8 +47,6 @@ effects <- summarise_runs(effects_raw)
 ```
 
 ```{r plot-layers}
-# Each scenario keeps its colour, shape and line in every plot, including the
-# effects plots, which have no baseline to take the first colour
 scenarios <- sort(unique(levels_raw$scenario))
 scenario_colours <- setNames(
   scales::brewer_pal(palette = "Set1")(max(3, length(scenarios)))[seq_along(scenarios)],
@@ -79,17 +77,18 @@ label_pp <- scales::label_number(scale = 100, suffix = " pp")
 
 # Cohort
 
-Everyone SimPaths finds eligible for supported employment at any point in 2021–2026 of the baseline run, followed from the year before they are first eligible. The same people are compared in every scenario.
+The cohort includes individuals eligible for supported employment at any point in 2021–2026 of the baseline run, followed from the year before they are first eligible.
 
 ```{r cohort-size}
+#| eval: false
+#| include: false
+#| echo: false
 data[scenario == "baseline" & timescale == "since_eligible", .(
   `Years since first eligible` = t,
   `People followed` = n
 )] |>
   knitr::kable()
 ```
-
-At k = −1 scenarios only agree for people first eligible in 2021; later entrants' year before eligibility falls inside the programme window, where the youth guarantee runs may already have placed them.
 
 # Levels by years since first eligible
 
@@ -217,12 +216,15 @@ effects |>
 ```
 
 # Programme reach
-
-Share of the cohort placed by the programme, and share eligible under each scenario's own run. SimPaths draws UC receipt from its global random number generator, so eligibility, and with it who gets placed, is reshuffled between runs; a placement rate well below the eligible rate in baseline dilutes the youth guarantee effects above.
-
 ```{r reach}
 #| fig-width: 6
 #| fig-height: 4
+#| include: false
+#| eval: false
+#| echo: false
+
+# Share of the cohort placed by the programme, and share eligible under each scenario's own run. SimPaths draws UC receipt from its global random number generator, so eligibility, and with it who gets placed, is reshuffled between runs; a placement rate well below the eligible rate in baseline dilutes the youth guarantee effects above.
+
 data[timescale == "since_eligible" & scenario != "baseline"] |>
   melt(
     id.vars = c("scenario", "t"),
