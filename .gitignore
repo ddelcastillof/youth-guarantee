@@ -23,10 +23,12 @@ report/*
 
 # Data
 !data/.gitkeep
-!data/scenario_inputs/pristine
 
 # Python bytecode
 __pycache__/
 
 # Transit files script
 transit/
+
+# SimPaths Outputs
+data/simpaths_output/*
