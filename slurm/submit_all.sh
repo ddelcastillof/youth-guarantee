@@ -17,13 +17,13 @@
 #        ./slurm/submit_all.sh --stage summarise X   # one stage in place, e.g. to re-summarise
 #        ./slurm/submit_all.sh --stage effects       # re-run the cohort comparison in place
 #        ./slurm/submit_all.sh --download [X ...]    # on your machine: fetch the summaries
-#        ./slurm/submit_all.sh --init                # once ever: snapshot the pristine inputs
 #
 # Submitting queues this same file as every job, with `--stage <stage> <scenario>`
 # appended; the #SBATCH lines above are what all stages share.
 #
-# SimPaths/input is shared mutable state: each scenario stages its own inputs
-# there, so no two runs may overlap. Each run job therefore depends on the
+# SimPaths/config and the input database SimPaths builds in SimPaths/input are
+# shared mutable state: each scenario writes its own config and rebuilds the
+# database, so no two runs may overlap. Each run job therefore depends on the
 # previous run job. Summarising reads copies under data/simpaths_output and is
 # free to overlap with later runs. The effects job compares every scenario with
 # baseline, so it waits for all of them to be summarised.
@@ -40,13 +40,9 @@
 
 set -euo pipefail
 
-# Run in this order. Each name needs a mutation registered in src/00_stage_scenario.py
-# (baseline needs none: it is the pristine inputs). Scenarios that switch on supported
-# employment are listed in src/00_stage_config.py.
+# Run in this order. Every name but baseline must be listed in src/00_stage_config.py,
+# which switches on its supported employment, its MCS shock, or both.
 SCENARIOS=(baseline yg-scenario-only hi-only both-scenarios)
-
-# Input files any scenario mutates; add to this list when a scenario touches a new one
-PRISTINE_FILES=(reg_health_wellbeing.xlsx)
 
 export SIMPATHS_PATH=${SIMPATHS_PATH:-../SimPaths}
 # Written into SimPaths/config by src/00_stage_config.py each run
@@ -83,11 +79,9 @@ activate_env() {
 stage_run() {
     export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 
-    # Restore pristine inputs, then apply this scenario's mutation.
-    # Must run inside the job: staging at submit time would have every scenario
-    # overwrite SimPaths/input before any job started.
-    python3 src/00_stage_scenario.py
-    # Same for SimPaths/config: switches supported employment on or off for this scenario
+    # Switches this scenario's interventions on or off in SimPaths/config.
+    # Must run inside the job: writing it at submit time would have every
+    # scenario overwrite SimPaths/config before any job started.
     python3 src/00_stage_config.py
     python3 src/01_run_simpaths.py
 }
@@ -138,11 +132,6 @@ stage_effects() {
 submit() {
     (( $# )) || set -- "${SCENARIOS[@]}"
 
-    if [[ ! -d data/scenario_inputs/pristine ]]; then
-        echo "No pristine input snapshot found. Run $0 --init once before submitting." >&2
-        exit 1
-    fi
-
     # #SBATCH --output=logs/%x-%j.out fails the job if this is missing
     mkdir -p logs
 
@@ -181,7 +170,7 @@ download() {
     for scenario in "$@"; do
         mkdir -p "data/simpaths_output/$scenario"
         # person_years.parquet lets src/03_cohort_effects.py be re-run locally
-        for file in output_dirs.txt person_years.parquet staged_inputs.txt simpaths_config.yml; do
+        for file in output_dirs.txt person_years.parquet simpaths_config.yml; do
             echo "Fetching $scenario/$file"
             scp "$HPC_LOGIN:$HPC_REPO/data/simpaths_output/$scenario/$file" \
                 "data/simpaths_output/$scenario/$file"
@@ -195,58 +184,6 @@ download() {
     done
 
     echo "Downloaded $# scenarios"
-}
-
-# Snapshots the SimPaths input files that scenarios mutate, so every run can be
-# restored to a known-clean starting point. Refuses to capture a snapshot that
-# already carries a scenario's effect: that would enshrine an intervention as
-# the baseline, silently, for every run afterwards.
-init_pristine() {
-    local src=$SIMPATHS_PATH/input dest=data/scenario_inputs/pristine file
-
-    if [[ -n $(ls -A "$dest" 2>/dev/null) ]]; then
-        echo "Pristine snapshot already exists: $dest" >&2
-        echo "Refusing to overwrite it. Delete it by hand if you really mean to re-capture." >&2
-        exit 1
-    fi
-
-    for file in "${PRISTINE_FILES[@]}"; do
-        if [[ ! -f $src/$file ]]; then
-            echo "Missing input file: $src/$file" >&2
-            exit 1
-        fi
-    done
-
-    python3 - "$src" <<'PY'
-import sys
-from pathlib import Path
-
-from openpyxl import load_workbook
-
-sys.path.insert(0, "src")
-from scenarios import hi_only
-
-simpaths_input = Path(sys.argv[1])
-
-for scenario in (hi_only,):
-    sheet = load_workbook(simpaths_input / scenario.WORKBOOK, read_only=True)[scenario.SHEET]
-    regressors = [row[0] for row in sheet.iter_rows(min_row=2, max_col=1, values_only=True)]
-    if scenario.REGRESSOR in regressors:
-        sys.exit(
-            f"{simpaths_input / scenario.WORKBOOK} already contains {scenario.REGRESSOR} in {scenario.SHEET}.\n"
-            "These inputs carry a scenario effect and cannot be used as the pristine baseline.\n"
-            "Restore a clean copy (git -C <SimPaths> checkout -- input/) and run this again."
-        )
-
-print("Contamination check passed: inputs are clean")
-PY
-
-    mkdir -p "$dest"
-    for file in "${PRISTINE_FILES[@]}"; do
-        cp "$src/$file" "$dest/$file"
-        echo "Captured $file"
-    done
-    echo "Pristine snapshot written to $dest"
 }
 
 if [[ ${1:-} == --stage ]]; then
@@ -273,7 +210,6 @@ SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}
 cd "$(dirname "$SELF")/.."
 
 case ${1:-} in
-    --init) init_pristine ;;
     --download) shift; download "$@" ;;
     *) submit "$@" ;;
 esac

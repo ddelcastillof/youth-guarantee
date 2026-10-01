@@ -63,7 +63,10 @@ def main():
     timestamp(f" - Started scenario {scenario}")
 
     try:
-        (simpaths_input_path / "input.mv.db").unlink(missing_ok=True)
+        # Force -DBSetup to rebuild from the current inputs, even after a killed
+        # job skipped the cleanup below
+        for filename in ("input.mv.db", "input.mv.db.lock"):
+            (simpaths_input_path / filename).unlink(missing_ok=True)
 
         output_dirs_before = set(list_output_dirs(simpaths_output_path))
 
