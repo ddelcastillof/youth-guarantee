@@ -138,7 +138,7 @@ output = (
     all_data.filter(pl.col("demAge").is_between(MIN_AGE, MAX_AGE))
     .select(
         pl.lit(scenario).alias("scenario"),
-        *person_keys, "time", "demAge", "labC4", "employed", "placed",
+        *person_keys, "time", "demAge", "labC4", "employed", "placed", "uc",
         eligible.alias("eligible"),
         "healthMentalMcs", "healthPsyDstrss0to12", "yDispEquivYear",
     )

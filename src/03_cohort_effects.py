@@ -30,6 +30,9 @@ OUTCOMES = {
     # Eligible under the scenario's own run; differs from baseline even before
     # the programme acts, as SimPaths reshuffles UC receipt between runs
     "elig_rate": pl.col("eligible").cast(pl.Float64),
+    # UC receipt under the scenario's own run; every cohort member has it in
+    # baseline at k = -1, as eligibility needs UC the year before
+    "uc_rate": pl.col("uc").cast(pl.Float64),
     "mean_mcs": mcs,
     **{f"mean_mcscase{t}": (mcs < t).cast(pl.Float64) for t in MCS_THRESHOLDS},
     "mean_mhcase": (pl.col("healthPsyDstrss0to12") >= 4).cast(pl.Float64),

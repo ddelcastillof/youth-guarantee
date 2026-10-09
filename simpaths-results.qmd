@@ -28,7 +28,8 @@ summary_vars <- c(
     "mean_mcscase45",
     "mean_mhcase",
     "placed_rate",
-    "elig_rate"
+    "elig_rate",
+    "uc_rate"
 )
 
 # Median and 95% interval across runs; with a single run the interval collapses to the line
@@ -246,4 +247,19 @@ data[timescale == "since_eligible" & scenario != "baseline"] |>
   theme_pubr() +
   theme(legend.box = "vertical") +
   since_eligible_layers
+```
+
+# UC receipt by calendar year
+
+How UC benefits (`yBenUCReceivedFlag`) move across those who are eligible for the intervention each year.
+
+```{r uc-rate}
+#| fig-width: 6
+#| fig-height: 4
+data[timescale == "calendar"] |>
+  ggplot() +
+  aes(x = t, y = uc_rate, ymin = uc_rate_l, ymax = uc_rate_u) +
+  labs(title = "UC receipt in the cohort", x = "Year", y = "Share receiving UC") +
+  scale_y_continuous(labels = scales::label_percent()) +
+  common_layers
 ```
