@@ -44,7 +44,7 @@ set -euo pipefail
 # which switches on its supported employment, its MCS shock, or both.
 SCENARIOS=(baseline yg-scenario-only hi-only both-scenarios)
 
-export SIMPATHS_PATH=${SIMPATHS_PATH:-../SimPaths}
+export SIMPATHS_PATH=${SIMPATHS_PATH:-../MySimPaths}
 # Written into SimPaths/config by src/00_stage_config.py each run
 export SIMPATHS_CONFIG=youth_guarantee.yml
 export FIRST_YEAR=2019
