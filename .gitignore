@@ -30,5 +30,8 @@ __pycache__/
 # Transit files script
 transit/
 
+# Script to run model in local machine
+slurm/submit_all_local.sh
+
 # SimPaths Outputs
 data/simpaths_output/*
