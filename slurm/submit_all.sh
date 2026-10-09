@@ -186,6 +186,10 @@ download() {
     echo "Downloaded $# scenarios"
 }
 
+# slurm/submit_all_local.sh sources this file for the settings and stages above,
+# then runs them itself
+[[ ${BASH_SOURCE[0]} == "$0" ]] || return 0
+
 if [[ ${1:-} == --stage ]]; then
     # A job runs a spooled copy of this file, so BASH_SOURCE no longer points into
     # the repo; it starts where it was submitted from, which submit() makes the root
