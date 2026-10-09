@@ -145,7 +145,8 @@ effects[timescale == "since_eligible"] |>
   ggplot() +
   aes(x = t, y = emp_rate, ymin = emp_rate_l, ymax = emp_rate_u) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "Change in employment rate", y = "Difference from baseline") +
+  labs(title = "Change in employment rate", y = "Difference from baseline
+(percentage points)") +
   scale_y_continuous(labels = label_pp) +
   common_layers +
   since_eligible_layers
@@ -175,7 +176,8 @@ effects[timescale == "since_eligible"] |>
   ggplot() +
   aes(x = t, y = mean_mcscase45, ymin = mean_mcscase45_l, ymax = mean_mcscase45_u) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "Change in MCS caseness (MCS < 45)", y = "Difference from baseline") +
+  labs(title = "Change in MCS caseness (MCS < 45)", y = "Difference from baseline
+(percentage points)") +
   scale_y_continuous(labels = label_pp) +
   common_layers +
   since_eligible_layers
@@ -195,7 +197,8 @@ effects |>
   aes(x = mean_mcscase45, xmin = mean_mcscase45_l, xmax = mean_mcscase45_u, y = scenario) +
   geom_pointrange() +
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(x = "Change in MCS caseness", y = NULL) +
+  labs(x = "Change in MCS caseness
+(percentage points)", y = NULL) +
   scale_x_continuous(labels = label_pp) +
   theme_pubr()
 ```
@@ -210,12 +213,12 @@ effects |>
   aes(x = emp_rate, xmin = emp_rate_l, xmax = emp_rate_u, y = scenario) +
   geom_pointrange() +
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(x = "Change in employment rate", y = NULL) +
+  labs(x = "Change in employment rate
+(percentage points)", y = NULL) +
   scale_x_continuous(labels = label_pp) +
   theme_pubr()
 ```
 
-# Programme reach
 ```{r reach}
 #| fig-width: 6
 #| fig-height: 4
