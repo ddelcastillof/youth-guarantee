@@ -1,12 +1,6 @@
 """
 Write the SimPaths multirun config for one scenario.
-
-multirun.jar reads its YAML from SimPaths/config, which every scenario shares,
-so this rewrites the whole file each run: supported employment is switched on
-for the youth guarantee scenarios and the MCS shock for the health intervention
-scenarios, each explicitly off for the others, so a run never inherits the
-settings left behind by the scenario before it. Unknown scenario names are
-refused. Run this immediately before src/01_run_simpaths.py.
+Run this immediately before src/01_run_simpaths.py.
 """
 
 import os
@@ -27,13 +21,11 @@ SUPPORTED_EMPLOYMENT_END_YEAR = 2026
 MCS_SHOCK_SCENARIOS = {"hi-only", "both-scenarios"}
 MCS_SHOCK = 1.2  # SF-12 MCS points added each year
 
-# Every other scenario switches on at least one intervention, so any name missing
-# here is refused and a mistyped one cannot quietly become baseline
+# Every other scenario switches on at least one intervention
 BASELINE = "baseline"
 SCENARIOS = {BASELINE} | SUPPORTED_EMPLOYMENT_SCENARIOS | MCS_SHOCK_SCENARIOS
 
-# Seed, population, years and number of runs are left out: src/01_run_simpaths.py
-# passes them as command-line flags, which override anything set here
+# Seed, population, years and number of runs are left out
 CONFIG_TEMPLATE = """\
 # Written by youth-guarantee/src/00_stage_config.py for scenario {scenario}; rewritten every run.
 # Seed, population, years and runs come from src/01_run_simpaths.py's command-line flags.
@@ -61,10 +53,6 @@ def env_str(name):
 
 
 def check_jar_has_model_args(jar, config):
-    # SimPaths sets each model_args key on the SimPathsModel field of the same name,
-    # by reflection. A key that names no field only prints a stack trace and the run
-    # goes ahead without it, so every key written here must be a name in the class:
-    # its constant pool holds each one as a 0x01 tag, a two-byte length, then the name.
     if not jar.is_file():
         sys.exit(f"multirun.jar not found at {jar}")
     with zipfile.ZipFile(jar) as archive:
@@ -81,7 +69,7 @@ def check_jar_has_model_args(jar, config):
 
 
 def main():
-    # Accept yg_scenario_only and yg-scenario-only, but hyphens are canonical (they name the output dirs)
+    # Accepts yg_scenario_only and yg-scenario-only (no-sensitive scenario naming)
     scenario = env_str("SCENARIO").replace("_", "-")
     if scenario not in SCENARIOS:
         sys.exit(
@@ -110,7 +98,7 @@ def main():
     config_path.parent.mkdir(exist_ok=True)
     config_path.write_text(config)
 
-    # Keep a copy with the results: nothing else records whether the interventions ran
+    # Keep a copy with the results
     results_path = REPO_ROOT / "data" / "simpaths_output" / scenario
     results_path.mkdir(parents=True, exist_ok=True)
     shutil.copy(config_path, results_path / "simpaths_config.yml")
