@@ -10,6 +10,7 @@ refused. Run this immediately before src/01_run_simpaths.py.
 """
 
 import os
+import re
 import shutil
 import sys
 import zipfile
@@ -41,8 +42,8 @@ model_args:
   supportedEmployment: {supported_employment}
   supportedEmploymentStartYear: {start_year}
   supportedEmploymentEndYear: {end_year}
-  policyCohort: true
-  policyCohortStartYear: {start_year}
+  MHpolicyCohort: true
+  MHpolicyCohortStartYear: {start_year}
   policyCohortMcsShock: {mcs_shock}
 
 collector_args:
@@ -59,20 +60,23 @@ def env_str(name):
     return value
 
 
-def check_jar_supports_interventions(jar):
-    # SimPaths sets model_args by reflection.
+def check_jar_has_model_args(jar, config):
+    # SimPaths sets each model_args key on the SimPathsModel field of the same name,
+    # by reflection. A key that names no field only prints a stack trace and the run
+    # goes ahead without it, so every key written here must be a name in the class:
+    # its constant pool holds each one as a 0x01 tag, a two-byte length, then the name.
     if not jar.is_file():
         sys.exit(f"multirun.jar not found at {jar}")
     with zipfile.ZipFile(jar) as archive:
         model_class = archive.read("simpaths/model/SimPathsModel.class")
-    for field, change in (
-        (b"supportedEmploymentStartYear", "supported employment"),
-        (b"policyCohortMcsShock", "policy cohort MCS shock"),
-    ):
-        if field not in model_class:
+    model_args = config.split("model_args:\n")[1].split("\n\n")[0]
+    for key in re.findall(r"^\s+(\w+):", model_args, re.MULTILINE):
+        name = key.encode()
+        if b"\x01" + len(name).to_bytes(2, "big") + name not in model_class:
             sys.exit(
-                f"{jar} has no {change} fields.\n"
-                f"Rebuild it from the SimPaths tree that carries the {change} changes."
+                f"{jar} has no SimPathsModel field named {key}.\n"
+                "Rename the key in CONFIG_TEMPLATE to match the field, or rebuild the jar "
+                "from the SimPaths tree that carries it."
             )
 
 
@@ -91,8 +95,6 @@ def main():
     if not simpaths_path.is_dir():
         sys.exit(f"SIMPATHS_PATH is not a directory: {simpaths_path}")
 
-    check_jar_supports_interventions(simpaths_path / "multirun.jar")
-
     supported_employment = scenario in SUPPORTED_EMPLOYMENT_SCENARIOS
     mcs_shock = MCS_SHOCK if scenario in MCS_SHOCK_SCENARIOS else 0.0
     config = CONFIG_TEMPLATE.format(
@@ -102,6 +104,7 @@ def main():
         end_year=SUPPORTED_EMPLOYMENT_END_YEAR,
         mcs_shock=mcs_shock,
     )
+    check_jar_has_model_args(simpaths_path / "multirun.jar", config)
 
     config_path = simpaths_path / "config" / config_name
     config_path.parent.mkdir(exist_ok=True)
