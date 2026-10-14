@@ -29,16 +29,21 @@ results_path = REPO_ROOT / "data" / "simpaths_output" / scenario
 output_file = results_path / "person_years.parquet"
 output_dirs = (results_path / "output_dirs.txt").read_text().splitlines()
 
-# Programme window as this scenario ran it, from the config src/00_stage_config.py
-# saved; that template is flat key: value lines, so no YAML parser is needed
-config = (results_path / "simpaths_config.yml").read_text()
+# Programme window, from the scenario files in config/. Every scenario is flagged
+# with the same one: baseline sets none, yet the cohort is picked there. The files
+# are flat key: value lines, so no YAML parser is needed
+config_path = REPO_ROOT / "config"
 
 
 def config_year(key):
-    match = re.search(rf"^\s*{key}:\s*(\d+)\s*$", config, re.MULTILINE)
-    if not match:
-        sys.exit(f"{key} not found in {results_path / 'simpaths_config.yml'}")
-    return int(match.group(1))
+    years = {
+        int(match.group(1))
+        for path in config_path.glob("*.yml")
+        for match in re.finditer(rf"^\s*{key}:\s*(\d+)\s*$", path.read_text(), re.MULTILINE)
+    }
+    if len(years) != 1:
+        sys.exit(f"Expected one {key} across {config_path}/*.yml, found {sorted(years) or 'none'}")
+    return years.pop()
 
 
 start_year = config_year("supportedEmploymentStartYear")

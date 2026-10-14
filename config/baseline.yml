@@ -1,0 +1,4 @@
+collector_args:
+  persistPersons: true
+  persistBenefitUnits: true
+  persistHouseholds: true

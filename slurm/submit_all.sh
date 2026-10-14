@@ -21,12 +21,12 @@
 # Submitting queues this same file as every job, with `--stage <stage> <scenario>`
 # appended; the #SBATCH lines above are what all stages share.
 #
-# SimPaths/config and the input database SimPaths builds in SimPaths/input are
-# shared mutable state: each scenario writes its own config and rebuilds the
-# database, so no two runs may overlap. Each run job therefore depends on the
-# previous run job. Summarising reads copies under data/simpaths_output and is
-# free to overlap with later runs. The effects job compares every scenario with
-# baseline, so it waits for all of them to be summarised.
+# The input database SimPaths builds in SimPaths/input is shared mutable state:
+# each scenario rebuilds it, so no two runs may overlap. Each run job therefore
+# depends on the previous run job. Summarising reads copies under
+# data/simpaths_output and is free to overlap with later runs. The effects job
+# compares every scenario with baseline, so it waits for all of them to be
+# summarised.
 #
 #   run(A) --afterok--> run(B) --afterok--> run(C)
 #     |                   |                   |
@@ -40,13 +40,11 @@
 
 set -euo pipefail
 
-# Run in this order. Every name but baseline must be listed in src/00_stage_config.py,
-# which switches on its supported employment, its MCS shock, or both.
-SCENARIOS=(baseline yg-scenario-only hi-only both-scenarios)
+# Run in this order. Each name is a file in config/: <name>.yml holds the SimPaths
+# settings that switch on its supported employment, its MCS shock, or both.
+SCENARIOS=(baseline youth-guarantee hi-only both-scenarios)
 
 export SIMPATHS_PATH=${SIMPATHS_PATH:-../MySimPaths}
-# Written into SimPaths/config by src/00_stage_config.py each run
-export SIMPATHS_CONFIG=youth_guarantee.yml
 export FIRST_YEAR=2019
 export LAST_YEAR=2026
 export POPULATION=50000
@@ -79,10 +77,6 @@ activate_env() {
 stage_run() {
     export JAVA_TOOL_OPTIONS="-Xmx6g -XX:+ExitOnOutOfMemoryError"
 
-    # Switches this scenario's interventions on or off in SimPaths/config.
-    # Must run inside the job: writing it at submit time would have every
-    # scenario overwrite SimPaths/config before any job started.
-    python3 src/00_stage_config.py
     python3 src/01_run_simpaths.py
 }
 

@@ -73,7 +73,7 @@ cohort = (
     .agg(pl.col("time").min().alias("t0"))
 )
 if cohort.is_empty():
-    sys.exit(f"Nobody is eligible in {REFERENCE}: check the programme window in its simpaths_config.yml")
+    sys.exit(f"Nobody is eligible in {REFERENCE}: check the programme window in config/*.yml")
 entries = cohort.group_by("t0").len().sort("t0").rows()
 print(f"Cohort: {cohort.height} people over {reference_runs.height} runs; first eligible by year: {entries}")
 

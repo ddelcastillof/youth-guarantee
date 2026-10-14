@@ -1,0 +1,12 @@
+model_args:
+  supportedEmployment: true
+  supportedEmploymentStartYear: 2021
+  supportedEmploymentEndYear: 2026
+  MHpolicyCohort: true
+  MHpolicyCohortStartYear: 2021
+  policyCohortMcsShock: 1.2
+
+collector_args:
+  persistPersons: true
+  persistBenefitUnits: true
+  persistHouseholds: true
