@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=compile
 #SBATCH --account=none
-#SBATCH --partition=nodes
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --nodes=1
