@@ -1,0 +1,14 @@
+Bootstrap: docker
+From: ibm-semeru-runtimes:open-jdk-25.0.5.0-jre
+
+%environment
+    unset JAVA_TOOL_OPTIONS
+    # Keep the image's read-only class cache, else OpenJ9 writes one to ~/.cache on NFS
+    export OPENJ9_JAVA_OPTIONS="-Xshareclasses:name=openj9_system_scc,cacheDir=/opt/java/.scc,readonly,nonFatal"
+
+%runscript
+    exec java "$@"
+
+%test
+    test "$(uname -m)" = x86_64
+    java -version
