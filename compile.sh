@@ -27,6 +27,7 @@ fi
 
 # module is not written for set -eu
 set +eu
+module purge
 module load apptainer/1.5.3/gnu1150
 set -eu
 
